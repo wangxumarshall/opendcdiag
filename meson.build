@@ -67,6 +67,18 @@ if host_machine.cpu_family() == 'x86_64'
     endif
 endif
 
+# ARM64 (AArch64) architecture support
+if host_machine.cpu_family() == 'aarch64'
+    if march_base == ''
+        march_base = 'armv8.1-a'
+    endif
+    march_flags = [
+        '-march=' + march_base,
+        '-mtune=generic',
+    ]
+    message('Building OpenDCDiag for ARM64 (AArch64)')
+endif
+
 debug_nasm_flags = ''
 if get_option('buildtype') == 'debug'
     debug_c_flags = [

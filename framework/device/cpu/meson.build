@@ -24,6 +24,10 @@ framework_files += files(
     'logging_cpu.cpp',
 )
 
+if host_machine.cpu_family() == 'aarch64'
+    subdir('arm64')
+endif
+
 unittests_sources += files(
     'unit-tests/thermal_monitor_tests.cpp',
 )

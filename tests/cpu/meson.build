@@ -207,3 +207,5 @@ if host_machine.cpu_family() == 'x86_64'
         'ifs/unit/ifs_unittests.cpp',
         )
 endif
+
+subdir('arm64')
