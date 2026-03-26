@@ -77,7 +77,7 @@ extern "C" {
 #ifndef NDEBUG
 #  define log_debug(...)        log_message(thread_num, SANDSTONE_LOG_DEBUG __VA_ARGS__)
 #else
-#  define log_debug( ...)       (void)0
+#  define log_debug( ...)       __extension__({ if (true) {} else log_message(thread_num, SANDSTONE_LOG_DEBUG __VA_ARGS__); })
 #endif
 
 // skip categories
@@ -446,7 +446,8 @@ bool test_is_retry() noexcept __attribute__((pure));
 /// failures to allocate memory or create a file.
 extern void log_platform_message(const char *msg, ...) ATTRIBUTE_PRINTF(1, 2);
 extern void log_message(int thread_num, const char *msg, ...) ATTRIBUTE_PRINTF(2, 3);
-extern void log_message_skip(int thread_num, SkipCategory c, const char *msg, ...) ATTRIBUTE_PRINTF(3, 4);
+extern void log_message_skip(int thread_num, SkipCategory c, const char *msg, ...)
+    ATTRIBUTE_PRINTF(3, 4) __attribute__((cold));
 /// logs binary data to the logs.  The data is specified in the data
 /// parameter and the size of the data in bytes in the size parameter.
 /// The message parameter provides a description of the data which

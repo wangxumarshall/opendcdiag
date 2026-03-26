@@ -11,8 +11,6 @@
 #include "level_zero/ze_api.h"
 #include "level_zero/zes_api.h"
 
-#include <type_traits>
-
 /// ZE API allows for nested enumeration of devices and their subdevices,
 /// depending on the ZE_FLAT_DEVICE_HIERARCHY env var value.
 int for_each_ze_device(const std::function<int(ze_device_handle_t, ze_driver_handle_t, const MultiSliceGpu&)>& func)
@@ -91,21 +89,26 @@ int for_each_zes_device(const std::function<int(zes_device_handle_t, ze_driver_h
 }
 
 namespace {
-template <typename Map, typename Func>
-int find_and_call_func(const gpu_info_t& info, ze_driver_handle_t ze_driver, const Map& map, const Func& func)
+template <typename DeviceType>
+int find_and_call_func(
+    const gpu_info_t& info, ze_driver_handle_t ze_driver,
+    const std::unordered_map<MultiSliceGpu, DeviceType>& map,
+    const std::function<int(DeviceType, ze_driver_handle_t, const MultiSliceGpu&)>& func
+)
 {
     MultiSliceGpu indices{
         .gpu_number = info.gpu_number, .device_index = info.device_index, .subdevice_index = info.subdevice_index
     };
     auto it = map.find(indices);
     if (it != map.cend()) {
-        func(it->second, ze_driver, indices);
-        return EXIT_SUCCESS;
+        return func(it->second, ze_driver, indices);
     }
     return EXIT_FAILURE;
 }
 
-template <typename DeviceType>
+// XXX depending on API version, ze_device_handle_t and zes_device_handle_t can be the exact same type,
+// so we need an explicit template argument to choose between for_each_zes_device and for_each_ze_device.
+template <typename DeviceType, bool IsSysmanAPI = false>
 int for_each_device_within_topo_internal(const std::function<int(DeviceType, ze_driver_handle_t, const MultiSliceGpu&)>& func)
 {
     // Collect all handles for easier lookup.
@@ -118,10 +121,10 @@ int for_each_device_within_topo_internal(const std::function<int(DeviceType, ze_
     };
 
     int ret;
-    if constexpr (std::is_same_v<DeviceType, ze_device_handle_t>) {
-        ret = for_each_ze_device(emplace_map);
-    } else {
+    if constexpr (IsSysmanAPI) {
         ret = for_each_zes_device(emplace_map);
+    } else {
+        ret = for_each_ze_device(emplace_map);
     }
     if (ze_driver == nullptr || ret != EXIT_SUCCESS) {
         return EXIT_FAILURE;
@@ -145,5 +148,5 @@ int for_each_ze_device_within_topo(const std::function<int(ze_device_handle_t, z
 
 int for_each_zes_device_within_topo(const std::function<int(zes_device_handle_t, ze_driver_handle_t, const MultiSliceGpu&)>& func)
 {
-    return for_each_device_within_topo_internal<zes_device_handle_t>(func);
+    return for_each_device_within_topo_internal<zes_device_handle_t, true>(func);
 }
